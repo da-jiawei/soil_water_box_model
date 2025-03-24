@@ -1,6 +1,7 @@
 library(tidyverse)
 library(ggpubr)
 library(readxl)
+library(scales)
 theme = theme(axis.text.x = element_text(margin = margin(t = 0.1, unit = "cm")),
               axis.text.y = element_text(margin = margin(r = 0.1, unit = "cm")),
               axis.ticks.length=unit(0.15, "cm"),
@@ -45,7 +46,7 @@ kh = 10^-1.5
 ksp = 3.3e-9 # solubility product of calcite
 kd_Sr = 0.057 # partition coefficient for Sr
 kd_Mg = 0.031 # partition coefficient for Mg
-kp = 5e-4 # rate constant for carbonate precipitation (made up) - mol/L/s
+kp = 1e-3 # rate constant for carbonate precipitation (made up) - mol/L/s
 k_degas = 2e-7 # CO2 degassing constant - mol/s
 
 # isotope standards
@@ -61,7 +62,7 @@ H2O_mol = 55.51 # mol/L
 # isotope model ----
 d13_co2_initial = -15
 d18p = -4
-RH = 0.9
+RH = 0.7
 Tsoil = 20
 w = 0.9
 Tsoil.K = Tsoil + 273.15
@@ -214,17 +215,21 @@ for (i in 1:(num-1)) {
 dat = data.frame(time = seq(dt, time, dt), V = V, DIC = DIC_s, CO2_s = CO2_s,
                  pH = pH, MgCa_s = MgCa_s, SrCa_s = SrCa_s, MgCa_c = MgCa_c, SrCa_c = SrCa_c,
                  Jp = Jp, d18s = d18_s, d18c = d18_c, d13_DIC = d13_DIC, d13_co2 = d13_co2, d13c = d13_c)
-dat = dat[seq(1,i-1),] %>% drop_na()
+dat = dat[seq(1,i-1),] %>% 
+  drop_na() %>%
+  filter(SrCa_c < 1e-3 * 0.2)
 dat$fraction = dat$V / dat$V[1]
 
 ## plot ----
 ggplot(dat, aes(x = time, y = Jp)) +
   geom_line()
 
-ggplot(dat) +
+p1 = ggplot(dat) +
   geom_point(aes(x = d13c, y = d18c, color = fraction), 
             shape = 21, size = 3) +
-  scale_color_distiller(palette = "RdBu", direction = 1) +
+  scale_color_distiller(palette = "RdBu", direction = 1, 
+                        breaks = seq(min(dat$fraction), max(dat$fraction), length.out = 4),
+                        labels = label_number(accuracy = 0.1)) +
   geom_point(data = DB1, aes(x = d13, y = d18, fill = depth), shape = 22, size = 3) +
   scale_fill_viridis_c(direction = -1) +
   theme_bw() + theme +
@@ -232,10 +237,12 @@ ggplot(dat) +
        y = expression(delta^"18"*"O"[c]*" (\u2030, VPDB)"),
        fill = "depth (cm)")
 
-ggplot(dat) +
+p2 = ggplot(dat) +
   geom_point(aes(x = 1e3 * MgCa_c, y = 1e3 * SrCa_c, color = fraction),
              shape = 21, size = 3) +
-  scale_color_distiller(palette = "RdBu", direction = 1) +
+  scale_color_distiller(palette = "RdBu", direction = 1, 
+                        breaks = seq(min(dat$fraction), max(dat$fraction), length.out = 4),
+                        labels = label_number(accuracy = 0.1)) +
   geom_point(data = DB1, aes(x = MgCa, y = SrCa, fill = depth), shape = 22, size = 3) +
   scale_fill_viridis_c(direction = -1) +
   theme_bw() + theme +
@@ -245,19 +252,21 @@ ggplot(dat) +
   scale_x_continuous(limits = c(0, 20)) +
   scale_y_continuous(limits = c(0, 0.3))
 
-ggarrange(p1, p2, nrow = 1, ncol = 2, align = "hv", common.legend = TRUE)
-ggsave("figures/degassing_evaporation2.jpg", width = 6.2, height = 4)
-
-ggplot(dat) +
+p3 = ggplot(dat) +
   geom_point(aes(x = 1e3 * SrCa_c, y = d18c, color = fraction), 
              shape = 21, size = 3) +
-  scale_color_distiller(palette = "RdBu", direction = 1) +
+  scale_color_distiller(palette = "RdBu", direction = 1, 
+                        breaks = seq(min(dat$fraction), max(dat$fraction), length.out = 4),
+                        labels = label_number(accuracy = 0.1)) +
   geom_point(data = DB1, aes(x = SrCa, y = d18, fill = depth), shape = 22, size = 3) +
   scale_fill_viridis_c(direction = -1) +
   theme_bw() + theme +
   labs(x = "Sr/Ca (mmol/mol)",
        y = expression(delta^"18"*"O"[c]*" (\u2030, VPDB)"),
        fill = "depth (cm)")
+
+ggarrange(p1, p2, p3, nrow = 1, ncol = 3, align = "hv", common.legend = TRUE)
+ggsave("figures/degassing_evaporation.jpg", width = 9, height = 4)
 
 ggplot(dat) +
   geom_line(aes(x = V/V[1], y = SrCa_s), color = "red") +
@@ -268,40 +277,3 @@ ggplot(dat) +
   scale_x_reverse(limits = c(1,0)) +
   labs(x = "fraction of remaining soil water",
        y = "Sr/Ca (mol/mol)")
-
-# DIC species
-par(mar = c(4, 4, 1, 4))
-plot(0, 0, xlim = c(5.5, 8), ylim = c(0, 3), axes = FALSE,
-     xlab = "", ylab = "")
-
-yext = range(log10(dat$H2CO3_s))
-tix = seq(floor(min(yext)), 
-          ceiling(max(yext)), by = 1)
-H2CO3.rs = cbind(dat$pH,
-               2 + (log10(dat$H2CO3_s) - min(tix)) / diff(range(tix)))
-lines(lowess(H2CO3.rs[, 1], H2CO3.rs[, 2]))
-axis(2, 2 + (tix - min(tix)) / diff(range(tix)), tix)
-mtext(expression("log"[10]*"[H"[2]*"CO"[3]*"]"), 2, line = 2.5, at = 2.5)
-
-yext = range(log10(dat$HCO3_s))
-tix = seq(floor(min(yext)), 
-          ceiling(max(yext)), by = 1)
-HCO3.rs = cbind(dat$pH,
-                 1 + (log10(dat$HCO3_s) - min(tix)) / diff(range(tix)))
-lines(lowess(HCO3.rs[, 1], HCO3.rs[, 2]))
-axis(4, 1 + (tix - min(tix)) / diff(range(tix)), tix)
-
-mtext(expression("log"[10]*"[HCO"[3]^"-"*"]"), 4, line = 2.5, at = 1.5)
-
-yext = range(log10(dat$CO3_s))
-tix = seq(floor(min(yext)), 
-          ceiling(max(yext)), by = 1)
-CO3.rs = cbind(dat$pH,
-                0 + (log10(dat$CO3_s) - min(tix)) / diff(range(tix)))
-lines(lowess(CO3.rs[, 1], CO3.rs[, 2]))
-axis(2, 0 + (tix - min(tix)) / diff(range(tix)), tix)
-mtext(expression("log"[10]*"[HCO"[3]*" "^"2-"*"]"), 2, line = 2.5, at = 0.5)
-
-axis(1)
-mtext("pH", 1, line = 2)
-dev.off()
