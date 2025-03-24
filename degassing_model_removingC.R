@@ -46,7 +46,7 @@ ksp = 3.3e-9 # solubility product of calcite
 kd_Sr = 0.057 # partition coefficient for Sr
 kd_Mg = 0.031 # partition coefficient for Mg
 kp = 5e-4 # rate constant for carbonate precipitation (made up) - mol/L/s
-k_degas = 3e-7 # CO2 degassing constant - mol/s
+k_degas = 2e-7 # CO2 degassing constant - mol/s
 
 # isotope standards
 R18smow = 0.0020052
