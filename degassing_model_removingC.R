@@ -12,7 +12,7 @@ theme = theme(axis.text.x = element_text(margin = margin(t = 0.1, unit = "cm")),
               legend.title = element_text(size = 10),
               panel.grid.minor = element_blank(),
               panel.grid.major = element_blank())
-# bush
+
 DB = read_xlsx("data/DanceBayou_all_carb_data.xlsx")
 DB1 = data.frame(DB$ID, DB$site, DB$depth, DB$d13C, DB$d18O, DB$`Sr, L1`, DB$`Mg, L1`)
 names(DB1) = c("ID", "site", "depth", "d13", "d18", "SrCa_mass", "MgCa_mass")
