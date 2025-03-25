@@ -63,7 +63,7 @@ H2O_mol = 55.51 # mol/L
 d13_co2_initial = -15
 d18p = -4
 RH = 0.7
-Tsoil = 20
+Tsoil = 15
 w = 0.9
 Tsoil.K = Tsoil + 273.15
 
@@ -236,7 +236,7 @@ p1 = ggplot(dat) +
   labs(x = expression(delta^"13"*"C"[c]*" (\u2030, VPDB)"),
        y = expression(delta^"18"*"O"[c]*" (\u2030, VPDB)"),
        fill = "depth (cm)")
-
+p1
 p2 = ggplot(dat) +
   geom_point(aes(x = 1e3 * MgCa_c, y = 1e3 * SrCa_c, color = fraction),
              shape = 21, size = 3) +
@@ -251,7 +251,7 @@ p2 = ggplot(dat) +
        fill = "depth (cm)") +
   scale_x_continuous(limits = c(0, 20)) +
   scale_y_continuous(limits = c(0, 0.3))
-
+p2
 p3 = ggplot(dat) +
   geom_point(aes(x = 1e3 * SrCa_c, y = d18c, color = fraction), 
              shape = 21, size = 3) +
@@ -264,7 +264,7 @@ p3 = ggplot(dat) +
   labs(x = "Sr/Ca (mmol/mol)",
        y = expression(delta^"18"*"O"[c]*" (\u2030, VPDB)"),
        fill = "depth (cm)")
-
+p3
 ggarrange(p1, p2, p3, nrow = 1, ncol = 3, align = "hv", common.legend = TRUE)
 ggsave("figures/degassing_evaporation.jpg", width = 9, height = 4)
 
