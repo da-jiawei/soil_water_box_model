@@ -108,3 +108,53 @@ ggplot(dat, aes(x = 1e3 * SrCa_c, y = MgCa_c, color = Tsoil, group = Tsoil)) +
   labs(x = "Sr/Ca (mmol/mol)",
        y = "Mg/Ca (mol/mol)")
 
+# influx ----
+vars = ctrl()
+sims = list()
+for (i in 1:5) {
+  vars$F_in = i * 2e-3
+  dat = SWTS_bm(vars)
+  dat$F_in = vars$F_in
+  sims[[i]] = dat
+}
+
+selected_cols = lapply(sims, function(df) df[, c("F_in", "fraction", "SrCa_c", "MgCa_c", "d13c", "d18c")])
+dat = do.call(rbind, selected_cols) %>% drop_na()
+dat = dat %>% filter(SrCa_c < 1e-3)
+p1 = ggplot(dat, aes(x = d13c, y = d18c, color = log10(F_in), group = F_in)) +
+  geom_path() +
+  theme_bw() + theme +
+  labs(x = expression(delta^"13"*"C"[c]*" (\u2030, VPDB)"),
+       y = expression(delta^"18"*"O"[c]*" (\u2030, VPDB)"),
+       color = "log(F_in) (L/s)")
+
+p2 = ggplot(dat, aes(x = 1e3 * SrCa_c, y = MgCa_c, color = log10(F_in), group = F_in)) +
+  geom_path() +
+  theme_bw() + theme +
+  labs(x = "Sr/Ca (mmol/mol)",
+       y = "Mg/Ca (mol/mol)",
+       color = "log(F_in) (L/s)")
+
+ggarrange(p1, p2, nrow = 1, ncol = 2, align = "hv", common.legend = TRUE)
+
+# d13C_DIC ----
+vars = ctrl()
+sims = list()
+for (i in 1:5) {
+  vars$d13_co2_initial = 2*i - 15
+  dat = SWTS_bm(vars)
+  dat$d13_co2_initial = vars$d13_co2_initial
+  sims[[i]] = dat
+}
+
+selected_cols = lapply(sims, function(df) df[, c("d13_co2_initial", "fraction", "SrCa_c", "MgCa_c", "d13c", "d18c")])
+dat = do.call(rbind, selected_cols) %>% drop_na()
+dat = dat %>% filter(SrCa_c < 1e-3)
+ggplot(dat, aes(x = d13c, y = d18c, color = d13_co2_initial, group = d13_co2_initial)) +
+  geom_path() +
+  theme_bw() + theme +
+  labs(x = expression(delta^"13"*"C"[c]*" (\u2030, VPDB)"),
+       y = expression(delta^"18"*"O"[c]*" (\u2030, VPDB)"))
+
+
+

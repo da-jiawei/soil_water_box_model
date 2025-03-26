@@ -20,7 +20,7 @@ ctrl = function(){
     d13_co2_initial = -15, # the d13C of the initial soil CO2 in equilibrium with DIC
     d18p = -4, # rainfall d18O
     RH = 0.7, # relative humidity
-    Tsoil = 15, # soil temperature
+    Tsoil = 17, # soil temperature
     w = 0.9, # the relative contribution of diffusion to evaporation
     # flux and concentration
     F_in = 0, # rainfall - L/s
@@ -30,8 +30,8 @@ ctrl = function(){
     Ca_p = 1e-4, # unit - mol/L
     Mg_p = 1e-5,
     Sr_p = 1e-6,
-    DIC_p = 2.3e-4,
-    d13_DIC_p = 0,
+    DIC_p = 2.2e-4,
+    d13_DIC_p = -5,
     # weathering input
     Ca_w = 0, # unit - mol/s
     Mg_w = 0,

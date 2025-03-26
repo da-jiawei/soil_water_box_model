@@ -29,11 +29,17 @@ cat("\014")
 # run the box model ----
 source('box_model.R')
 vars = ctrl()
-dat = SWTS_bm(vars)
+# parameters that affect d13Cc
+vars$F_in = 5e-3
+vars$d13_DIC_p = -5
+# parameters that affect d18Oc
+vars$Tsoil = 18
+dat = SWTS_bm(vars) %>%
+  filter(Jp != 0)
 
 ## plot ----
-ggplot(dat, aes(x = time, y = Jp)) +
-  geom_line()
+# ggplot(dat, aes(x = time, y = Jp)) +
+#   geom_line()
 
 p1 = ggplot(dat) +
   geom_point(aes(x = d13c, y = d18c, color = fraction), 
@@ -44,11 +50,11 @@ p1 = ggplot(dat) +
   geom_point(data = DB1, aes(x = d13, y = d18, fill = depth), shape = 22, size = 3) +
   scale_fill_viridis_c(direction = -1) +
   theme_bw() + theme +
+  scale_x_continuous(limits = c(-11, -2)) +
+  scale_y_continuous(limits = c(-5, 0)) +
   labs(x = expression(delta^"13"*"C"[c]*" (\u2030, VPDB)"),
        y = expression(delta^"18"*"O"[c]*" (\u2030, VPDB)"),
-       fill = "depth (cm)") +
-  scale_x_continuous(limits = c(min(DB1$d13), max(DB1$d13)))+
-  scale_y_continuous(limits = c(min(DB1$d18), max(DB1$d18)))
+       fill = "depth (cm)")
 p1
 p2 = ggplot(dat) +
   geom_point(aes(x = 1e3 * MgCa_c, y = 1e3 * SrCa_c, color = fraction),
@@ -59,34 +65,24 @@ p2 = ggplot(dat) +
   geom_point(data = DB1, aes(x = MgCa, y = SrCa, fill = depth), shape = 22, size = 3) +
   scale_fill_viridis_c(direction = -1) +
   theme_bw() + theme +
+  scale_x_continuous(limits = c(0, 30)) +
+  scale_y_continuous(limits = c(0, 0.3)) +
   labs(x = "Mg/Ca (mmol/mol)",
        y = "Sr/Ca (mmol/mol)",
-       fill = "depth (cm)") +
-  scale_x_continuous(limits = c(0, 20)) +
-  scale_y_continuous(limits = c(0, 0.3))
-p2
-p3 = ggplot(dat) +
-  geom_point(aes(x = 1e3 * SrCa_c, y = d18c, color = fraction), 
-             shape = 21, size = 3) +
-  scale_color_distiller(palette = "RdBu", direction = 1, 
-                        breaks = seq(min(dat$fraction), max(dat$fraction), length.out = 4),
-                        labels = label_number(accuracy = 0.1)) +
-  geom_point(data = DB1, aes(x = SrCa, y = d18, fill = depth), shape = 22, size = 3) +
-  scale_fill_viridis_c(direction = -1) +
-  theme_bw() + theme +
-  labs(x = "Sr/Ca (mmol/mol)",
-       y = expression(delta^"18"*"O"[c]*" (\u2030, VPDB)"),
        fill = "depth (cm)")
-p3
-ggarrange(p1, p2, p3, nrow = 1, ncol = 3, align = "hv", common.legend = TRUE)
+p2
+# p3 = ggplot(dat) +
+#   geom_point(aes(x = 1e3 * SrCa_c, y = d18c, color = fraction), 
+#              shape = 21, size = 3) +
+#   scale_color_distiller(palette = "RdBu", direction = 1, 
+#                         breaks = seq(min(dat$fraction), max(dat$fraction), length.out = 4),
+#                         labels = label_number(accuracy = 0.1)) +
+#   geom_point(data = DB1, aes(x = SrCa, y = d18, fill = depth), shape = 22, size = 3) +
+#   scale_fill_viridis_c(direction = -1) +
+#   theme_bw() + theme +
+#   labs(x = "Sr/Ca (mmol/mol)",
+#        y = expression(delta^"18"*"O"[c]*" (\u2030, VPDB)"),
+#        fill = "depth (cm)")
+# p3
+ggarrange(p1, p2, nrow = 1, ncol = 2, align = "hv", common.legend = TRUE)
 ggsave("figures/degassing_evaporation.jpg", width = 9, height = 4)
-
-ggplot(dat) +
-  geom_line(aes(x = V/V[1], y = SrCa_s), color = "red") +
-  annotate("text", x = 0.2, y = 0.12, label = "soil water", color = "red") +
-  geom_line(aes(x = V/V[1], y = SrCa_c), color = "blue") +
-  annotate("text", x = 0.3, y = 0.05, label = "pedogenic carbonate", color = "blue") +
-  theme_bw() + theme +
-  scale_x_reverse(limits = c(1,0)) +
-  labs(x = "fraction of remaining soil water",
-       y = "Sr/Ca (mol/mol)")
