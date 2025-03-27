@@ -71,7 +71,7 @@ SWTS_bm = function(vars) {
   CO2_atm = 400
   
   # molarity of water
-  H2O_mol = 55.51 # mol/L
+  # H2O_mol = 55.51 # mol/L
   
   ## stable isotope ----
   Tsoil.K = Tsoil + 273.15
@@ -167,7 +167,7 @@ SWTS_bm = function(vars) {
         dCa = (dt / V[i]) * (F_in * (Ca_p - Ca_s[i]) + F_evap * Ca_s[i] + Ca_w - Jp[i])
         dMg = (dt / V[i]) * (F_in * (Mg_p - Mg_s[i]) + F_evap * Mg_s[i] + Mg_w - (Jp[i] * kd_Mg * Mg_s[i] / Ca_s[i]))
         dSr = (dt / V[i]) * (F_in * (Sr_p - Sr_s[i]) + F_evap * Sr_s[i] + Sr_w - (Jp[i] * kd_Sr * Sr_s[i] / Ca_s[i]))
-        dd18_s = (dt / V[i]) * ((d18p - d18_s[i]) * F_in - (d18e - d18_s[i]) * F_evap - d18_c[i] * (3 * Jp[i] / H2O_mol))
+        dd18_s = (dt / V[i]) * ((d18p - d18_s[i]) * F_in - (d18e - d18_s[i]) * F_evap)
         dd13_DIC = (dt / (V[i] * DIC_s[i])) * ((d13_DIC_p - d13_DIC[i]) * F_in - (d13_co2[i] * degas) - (d13_c[i] * Jp[i]) + (d13_DIC[i] * DIC_s[i] * F_evap) - (d13_DIC[i] * V[i] * dDIC / dt))
         
         if(Jp[i] == 0) {

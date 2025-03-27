@@ -29,13 +29,16 @@ cat("\014")
 # run the box model ----
 source('box_model.R')
 vars = ctrl()
-# parameters that affect d13Cc
-vars$F_in = 5e-3
-vars$d13_DIC_p = -5
-# parameters that affect d18Oc
-vars$Tsoil = 18
+vars$k_degas = 1e-8
+# # parameters that affect d13Cc
+vars$F_in = 1e-3
+# vars$d13_DIC_p = -5
+# # parameters that affect d18Oc
+# vars$Tsoil = 20
 dat = SWTS_bm(vars) %>%
-  filter(Jp != 0)
+  filter(Jp != 0) 
+dat = dat %>%
+  filter(d18c <= max(DB1$d18))
 
 ## plot ----
 # ggplot(dat, aes(x = time, y = Jp)) +
@@ -46,12 +49,12 @@ p1 = ggplot(dat) +
              shape = 21, size = 3) +
   scale_color_distiller(palette = "RdBu", direction = 1, 
                         breaks = seq(min(dat$fraction), max(dat$fraction), length.out = 4),
-                        labels = label_number(accuracy = 0.1)) +
+                        labels = label_number(accuracy = 0.01)) +
   geom_point(data = DB1, aes(x = d13, y = d18, fill = depth), shape = 22, size = 3) +
   scale_fill_viridis_c(direction = -1) +
   theme_bw() + theme +
-  scale_x_continuous(limits = c(-11, -2)) +
-  scale_y_continuous(limits = c(-5, 0)) +
+  # scale_x_continuous(limits = c(-11, -2)) +
+  # scale_y_continuous(limits = c(-5, 0)) +
   labs(x = expression(delta^"13"*"C"[c]*" (\u2030, VPDB)"),
        y = expression(delta^"18"*"O"[c]*" (\u2030, VPDB)"),
        fill = "depth (cm)")
@@ -61,7 +64,7 @@ p2 = ggplot(dat) +
              shape = 21, size = 3) +
   scale_color_distiller(palette = "RdBu", direction = 1, 
                         breaks = seq(min(dat$fraction), max(dat$fraction), length.out = 4),
-                        labels = label_number(accuracy = 0.1)) +
+                        labels = label_number(accuracy = 0.01)) +
   geom_point(data = DB1, aes(x = MgCa, y = SrCa, fill = depth), shape = 22, size = 3) +
   scale_fill_viridis_c(direction = -1) +
   theme_bw() + theme +
