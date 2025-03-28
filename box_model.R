@@ -15,29 +15,30 @@ find_d13HCO3 = function(X_HCO3, X_CO3, X_H2CO3, d13_DIC, d13_HCO3, alpha13_HCO3_
 # input parameters
 ctrl = function(){
   vars = list(
-    kp = 1e-3, # rate constant for carbonate precipitation (made up) - mol/L/s
+    kp = 3e-3, # rate constant for carbonate precipitation - mol/L/s
     k_degas = 2e-7, # CO2 degassing constant - mol/s
-    d13_co2_initial = -15, # the d13C of the initial soil CO2 in equilibrium with DIC
+    d13_r = -20, # the d13C of the respired CO2 in equilibrium with DIC
+    res_Co = 5e-5, # the initial amount of respired CO2 being added into the DIC - mol/s
     d18p = -4, # rainfall d18O
     RH = 0.7, # relative humidity
     Tsoil = 17, # soil temperature
     w = 0.9, # the relative contribution of diffusion to evaporation
     # flux and concentration
-    F_in = 0, # rainfall - L/s
-    F_evap = 1e-2, # evaporation - L/s
+    F_in = 2e-4, # rainfall - L/s
+    F_evap = 1e-3, # evaporation - L/s
     F_out = 0, # outflow of soil waters (e.g., to deeper soils, rootwater uptake)
     # rainfall chemistry
     Ca_p = 1e-4, # unit - mol/L
     Mg_p = 1e-5,
     Sr_p = 1e-6,
     DIC_p = 2.2e-4,
-    d13_DIC_p = -5,
+    d13_DIC_p = -3,
     # weathering input
     Ca_w = 0, # unit - mol/s
     Mg_w = 0,
     Sr_w = 0,
     DIC_w = 0,
-    d13_DIC_w = -10,
+    d13_DIC_w = -25,
     # parameterization
     dt = 1,  # unit - s
     time = 60 * 60,
@@ -95,6 +96,7 @@ SWTS_bm = function(vars) {
   # parameterization ----
   num = time / dt
   V = rep(Vo, num) # unit - L
+  res_C = rep(res_Co, num)
   d18_s = rep(d18so, num)
   d18_c = rep(0, num)
   d13_DIC = rep(0, num)
@@ -142,9 +144,9 @@ SWTS_bm = function(vars) {
         
         if(i == 1) {
           # solve DIC-d13C using mass balance model
-          d13_HCO3[i] = alpha13_HCO3_CO2 * (d13_co2_initial + 1000) - 1000
+          d13_HCO3[i] = alpha13_HCO3_CO2 * (d13_r + 1000) - 1000
           d13_CO3[i] =  (d13_HCO3[i] + 1000) / alpha13_HCO3_CO3 - 1000
-          d13_H2CO3[i] = alpha13_H2CO3_CO2 * (d13_co2_initial + 1000) - 1000
+          d13_H2CO3[i] = alpha13_H2CO3_CO2 * (d13_r + 1000) - 1000
           d13_DIC[i] = d13_CO3[i] * X_CO3 + d13_HCO3[i] * X_HCO3 + d13_H2CO3[i] * X_H2CO3
         } else {
           d13_HCO3[i] = uniroot(find_d13HCO3, X_HCO3 = X_HCO3, X_CO3 = X_CO3, X_H2CO3 = X_H2CO3, d13_DIC = d13_DIC[i], 
@@ -163,12 +165,12 @@ SWTS_bm = function(vars) {
         # box model
         dV = dt * (F_in - F_evap - F_out) # unit: L/s
         degas = k_degas * (CO2_s[i] - CO2_atm)
-        dDIC = (dt / V[i]) * (F_in * (DIC_p - DIC_s[i]) + F_evap * DIC_s[i] + DIC_w - Jp[i] - degas)
+        dDIC = (dt / V[i]) * (F_in * (DIC_p - DIC_s[i]) + F_evap * DIC_s[i] + DIC_w - Jp[i] - degas + res_C[i])
         dCa = (dt / V[i]) * (F_in * (Ca_p - Ca_s[i]) + F_evap * Ca_s[i] + Ca_w - Jp[i])
         dMg = (dt / V[i]) * (F_in * (Mg_p - Mg_s[i]) + F_evap * Mg_s[i] + Mg_w - (Jp[i] * kd_Mg * Mg_s[i] / Ca_s[i]))
         dSr = (dt / V[i]) * (F_in * (Sr_p - Sr_s[i]) + F_evap * Sr_s[i] + Sr_w - (Jp[i] * kd_Sr * Sr_s[i] / Ca_s[i]))
         dd18_s = (dt / V[i]) * ((d18p - d18_s[i]) * F_in - (d18e - d18_s[i]) * F_evap)
-        dd13_DIC = (dt / (V[i] * DIC_s[i])) * ((d13_DIC_p - d13_DIC[i]) * F_in - (d13_co2[i] * degas) - (d13_c[i] * Jp[i]) + (d13_DIC[i] * DIC_s[i] * F_evap) - (d13_DIC[i] * V[i] * dDIC / dt))
+        dd13_DIC = (dt / (V[i] * DIC_s[i])) * ((d13_DIC_p - d13_DIC[i]) * F_in - (d13_co2[i] * degas) + (d13_r * res_C[i]) - (d13_c[i] * Jp[i]) + (d13_DIC[i] * DIC_s[i] * F_evap) - (d13_DIC[i] * V[i] * dDIC / dt))
         
         if(Jp[i] == 0) {
           SrCa_c[i] = NA
@@ -185,6 +187,7 @@ SWTS_bm = function(vars) {
           d18_c[i] = (R18c / R18vpdb - 1) * 1000
         }
         V[i+1] = V[i] + dV 
+        res_C[i+1] = res_C[1] * V[i] / V[1] # res_C input as a function of remaining soil water 
         if(V[i+1] <= 0) {
           print("V is negative, stopping loop.")
           break
@@ -202,7 +205,7 @@ SWTS_bm = function(vars) {
       message("Error encountered: ", e$message)
       message("Returning results up to the last successful iteration.")
     })
-  results = data.frame(time = seq(dt, time, dt), V = V, fraction = V/V[1], DIC = DIC_s, CO2_s = CO2_s,
+  results = data.frame(time = seq(dt, time, dt), V = V, fraction = V/V[1], res_C = res_C, DIC = DIC_s, CO2_s = CO2_s,
                    pH = pH, MgCa_s = MgCa_s, SrCa_s = SrCa_s, MgCa_c = MgCa_c, SrCa_c = SrCa_c,
                    Jp = Jp, d18s = d18_s, d18c = d18_c, d13_DIC = d13_DIC, d13_co2 = d13_co2, d13c = d13_c)[1:(i-1), ]
 }

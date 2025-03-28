@@ -17,34 +17,50 @@ theme = theme(axis.text.x = element_text(margin = margin(t = 0.1, unit = "cm")),
 source('box_model.R')
 cat("\014")
 
-# calcite precipitation rate ----
+# calcite precipitation rate (no significant effect) ----
 vars = ctrl()
 sims = list()
 for (i in 1:5) {
-  vars$kp = 2e-3 * i
+  vars$kp = 2e-4 * i
   dat = SWTS_bm(vars)
   dat$kp = vars$kp
   sims[[i]] = dat
 }
 selected_cols = lapply(sims, function(df) df[, c("kp", "fraction", "SrCa_c", "MgCa_c", "d13c", "d18c")])
 dat = do.call(rbind, selected_cols) %>% drop_na()
-ggplot(dat, aes(x = 1e3 * SrCa_c, y = d18c, color = kp, group = kp)) +
-  geom_point() +
-  theme_bw() + theme +
-  labs(x = "Sr/Ca (mmol/mol)",
-       y = expression(delta^"18"*"O"[c]*" (\u2030, VPDB)"))
 
 ggplot(dat, aes(x = d13c, y = d18c, color = kp, group = kp)) +
-  geom_point() +
+  geom_path() +
   theme_bw() + theme +
   labs(x = expression(delta^"13"*"C"[c]*" (\u2030, VPDB)"),
        y = expression(delta^"18"*"O"[c]*" (\u2030, VPDB)"))
 
 ggplot(dat, aes(x = 1e3 * SrCa_c, y = MgCa_c, color = kp, group = kp)) +
-  geom_point() +
+  geom_path() +
   theme_bw() + theme +
   labs(x = "Sr/Ca (mmol/mol)",
        y = "Mg/Ca (mol/mol)")
+
+# CO2 dissolution rate ----
+vars = ctrl()
+sims = list()
+for (i in 1:5) {
+  vars$res_Co = 10 ^ -(i + 4)
+  dat = SWTS_bm(vars)
+  dat$res_Co = vars$res_Co
+  sims[[i]] = dat
+}
+
+selected_cols = lapply(sims, function(df) df[, c("res_Co", "fraction", "SrCa_c", "MgCa_c", "d13c", "d18c")])
+dat = do.call(rbind, selected_cols) %>% drop_na()
+dat = dat %>% filter(SrCa_c < 0.1)
+
+ggplot(dat, aes(x = d13c, y = d18c, color = log10(res_Co), group = res_Co)) +
+  geom_path() +
+  theme_bw() + theme +
+  labs(x = expression(delta^"13"*"C"[c]*" (\u2030, VPDB)"),
+       y = expression(delta^"18"*"O"[c]*" (\u2030, VPDB)"))
+
 
 # CO2 degassing rate ----
 vars = ctrl()
@@ -58,11 +74,6 @@ for (i in 1:4) {
 selected_cols = lapply(sims, function(df) df[, c("kd", "fraction", "SrCa_c", "MgCa_c", "d13c", "d18c")])
 dat = do.call(rbind, selected_cols) %>% drop_na()
 dat = dat %>% filter(SrCa_c < 0.1)
-ggplot(dat, aes(x = 1e3 * SrCa_c, y = d18c, color = -log10(kd), group = kd)) +
-  geom_point() +
-  theme_bw() + theme +
-  labs(x = "Sr/Ca (mmol/mol)",
-       y = expression(delta^"18"*"O"[c]*" (\u2030, VPDB)"))
 
 ggplot(dat, aes(x = d13c, y = d18c, color = -log10(kd), group = kd)) +
   geom_path() +
@@ -71,7 +82,7 @@ ggplot(dat, aes(x = d13c, y = d18c, color = -log10(kd), group = kd)) +
        y = expression(delta^"18"*"O"[c]*" (\u2030, VPDB)"))
 
 ggplot(dat, aes(x = 1e3 * SrCa_c, y = MgCa_c, color = -log10(kd), group = kd)) +
-  geom_point() +
+  geom_path() +
   theme_bw() + theme +
   labs(x = "Sr/Ca (mmol/mol)",
        y = "Mg/Ca (mol/mol)")
@@ -155,6 +166,27 @@ ggplot(dat, aes(x = d13c, y = d18c, color = d13_co2_initial, group = d13_co2_ini
   theme_bw() + theme +
   labs(x = expression(delta^"13"*"C"[c]*" (\u2030, VPDB)"),
        y = expression(delta^"18"*"O"[c]*" (\u2030, VPDB)"))
+
+# d13C of influx ----
+vars = ctrl()
+sims = list()
+for (i in 1:5) {
+  vars$d13_DIC_p = 2*i - 15
+  vars$F_in = 1e-3
+  dat = SWTS_bm(vars)
+  dat$d13_DIC_p = vars$d13_DIC_p
+  sims[[i]] = dat
+}
+
+selected_cols = lapply(sims, function(df) df[, c("d13_DIC_p", "fraction", "SrCa_c", "MgCa_c", "d13c", "d18c")])
+dat = do.call(rbind, selected_cols) %>% drop_na()
+dat = dat %>% filter(SrCa_c < 1e-3)
+ggplot(dat, aes(x = d13c, y = d18c, color = d13_DIC_p, group = d13_DIC_p)) +
+  geom_path() +
+  theme_bw() + theme +
+  labs(x = expression(delta^"13"*"C"[c]*" (\u2030, VPDB)"),
+       y = expression(delta^"18"*"O"[c]*" (\u2030, VPDB)"))
+
 
 
 
