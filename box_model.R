@@ -15,7 +15,7 @@ find_d13HCO3 = function(X_HCO3, X_CO3, X_H2CO3, d13_DIC, d13_HCO3, alpha13_HCO3_
 # input parameters
 ctrl = function(){
   vars = list(
-    kp = 3e-3, # rate constant for carbonate precipitation - mol/L/s
+    kp = 3e-3, # rate constant for carbonate precipitation - mol/s
     k_degas = 2e-7, # CO2 degassing constant - mol/s
     d13_r = -20, # the d13C of the respired CO2 in equilibrium with DIC
     res_Co = 5e-5, # the initial amount of respired CO2 being added into the DIC - mol/s
@@ -158,7 +158,7 @@ SWTS_bm = function(vars) {
         
         omega = Ca_s[i] * CO3_s[i] / ksp # the saturation state of calcite
         if(omega > 1) {
-          Jp[i] = kp * (omega - 1) # precipitation flux of calcite - unit: mol/L/s
+          Jp[i] = kp * (omega - 1) # precipitation flux of calcite - unit: mol/s
         } else {
           Jp[i] = 0
         }
@@ -170,7 +170,8 @@ SWTS_bm = function(vars) {
         dMg = (dt / V[i]) * (F_in * (Mg_p - Mg_s[i]) + F_evap * Mg_s[i] + Mg_w - (Jp[i] * kd_Mg * Mg_s[i] / Ca_s[i]))
         dSr = (dt / V[i]) * (F_in * (Sr_p - Sr_s[i]) + F_evap * Sr_s[i] + Sr_w - (Jp[i] * kd_Sr * Sr_s[i] / Ca_s[i]))
         dd18_s = (dt / V[i]) * ((d18p - d18_s[i]) * F_in - (d18e - d18_s[i]) * F_evap)
-        dd13_DIC = (dt / (V[i] * DIC_s[i])) * ((d13_DIC_p - d13_DIC[i]) * F_in - (d13_co2[i] * degas) + (d13_r * res_C[i]) - (d13_c[i] * Jp[i]) + (d13_DIC[i] * DIC_s[i] * F_evap) - (d13_DIC[i] * V[i] * dDIC / dt))
+        # dd13_DIC = (dt / (V[i] * DIC_s[i])) * ((d13_DIC_p - d13_DIC[i]) * F_in - (d13_co2[i] * degas) + (d13_r * res_C[i]) - (d13_c[i] * Jp[i]) + (d13_DIC[i] * DIC_s[i] * F_evap) - (d13_DIC[i] * V[i] * dDIC / dt))
+        dd13_DIC = (dt / (V[i] * DIC_s[i])) * ((d13_DIC_p - d13_DIC[i]) * F_in - (d13_co2[i] - d13_DIC[i]) * degas + (d13_r - d13_DIC[i]) * res_C[i] - (d13_c[i] - d13_DIC[i]) * Jp[i] + (d13_DIC_w - d13_DIC[i]) * DIC_w)
         
         if(Jp[i] == 0) {
           SrCa_c[i] = NA

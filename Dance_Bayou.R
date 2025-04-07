@@ -26,7 +26,6 @@ DB1 = DB1 %>%
 DB1$depth = as.numeric(DB1$depth)
 cat("\014")
 source('box_model.R')
-vars = ctrl()
 
 # run the box model ----
 vars = ctrl()
@@ -157,7 +156,7 @@ ggplot(dat) +
   labs(x = expression(delta^"13"*"C"[c]*" (\u2030, VPDB)"),
        y = expression(delta^"18"*"O"[c]*" (\u2030, VPDB)"),
        fill = "depth (cm)",
-       color = expression("log"[10]*"(k"[degassing]*") (mol/s)"))
+       color = expression("log"[10]*"(k"[p]*") (mol/s)"))
 
 # evaporation rate ----
 vars = ctrl()
@@ -268,7 +267,7 @@ p6 = ggplot(dat) +
 p6
 
 ggarrange(p1, p2, p3, p4, p5, p6, nrow = 3, ncol = 2, align = "hv")
-ggsave("figures/sens_test_isotopes.jpg", width = 7.5, height = 7.2)
+ggsave("figures/sens_test_isotopes.jpg", width = 8, height = 7.2)
 
 
 ## plot ----
