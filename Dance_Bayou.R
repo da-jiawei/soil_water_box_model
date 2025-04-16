@@ -25,15 +25,15 @@ DB1 = DB1 %>%
          SrCa = 1000 * SrCa_mass * 40.078 / 87.62)
 DB1$depth = as.numeric(DB1$depth)
 cat("\014")
-source('box_model.R')
+source('box_model_Mn_redox.R')
 
 # run the box model ----
 vars = ctrl()
 # vars$res_Co = 1e-6
 # vars$d13_r = -14
 # vars$Tsoil = 20
-vars$k_degas = 0
-vars$F_evap = 5e-1
+# vars$k_degas = 0
+# vars$F_evap = 5e-1
 
 dat = SWTS_bm(vars) %>%
   filter(Jp != 0)

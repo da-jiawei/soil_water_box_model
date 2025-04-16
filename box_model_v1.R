@@ -117,6 +117,7 @@ SWTS_bm = function(vars) {
   pH = rep(0, num)
   MgCa_s = rep(0, num)
   SrCa_s = rep(0, num)
+  omega = rep(0, num)
   Jp = rep(0, num)
   SrCa_c = rep(0, num)
   MgCa_c = rep(0, num)
@@ -156,9 +157,9 @@ SWTS_bm = function(vars) {
         }
         d13_co2[i] = (d13_H2CO3[i] + 1000) / alpha13_H2CO3_CO2 - 1000
         
-        omega = Ca_s[i] * CO3_s[i] / ksp # the saturation state of calcite
-        if(omega > 1) {
-          Jp[i] = kp * (omega - 1) # precipitation flux of calcite - unit: mol/s
+        omega[i] = Ca_s[i] * CO3_s[i] / ksp # the saturation state of calcite
+        if(omega[i] > 1) {
+          Jp[i] = kp * (omega[i] - 1) # precipitation flux of calcite - unit: mol/s
         } else {
           Jp[i] = 0
         }
@@ -181,8 +182,8 @@ SWTS_bm = function(vars) {
         } else {
           SrCa_s[i] = Sr_s[i] / Ca_s[i]
           MgCa_s[i] = Mg_s[i] / Ca_s[i]
-          SrCa_c[i] = kd_Mg * SrCa_s[i]
-          MgCa_c[i] = kd_Sr * MgCa_s[i]
+          SrCa_c[i] = kd_Sr * SrCa_s[i]
+          MgCa_c[i] = kd_Mg * MgCa_s[i]
           d13_c[i] = (d13_co2[i] + 1000) * alpha13_cal_CO2 - 1000
           R18c = R18s * alpha18_c_w
           d18_c[i] = (R18c / R18vpdb - 1) * 1000
@@ -202,12 +203,13 @@ SWTS_bm = function(vars) {
         d18_s[i+1] = d18_s[i] + dd18_s
         d13_DIC[i+1] = d13_DIC[i] + dd13_DIC
       }
-      }, error = function(e) {
+    }, error = function(e) {
       message("Error encountered: ", e$message)
       message("Returning results up to the last successful iteration.")
     })
-  results = data.frame(time = seq(dt, time, dt), V = V, fraction = V/V[1], res_C = res_C, DIC = DIC_s, CO2_s = CO2_s,
-                   pH = pH, MgCa_s = MgCa_s, SrCa_s = SrCa_s, MgCa_c = MgCa_c, SrCa_c = SrCa_c,
-                   Jp = Jp, d18s = d18_s, d18c = d18_c, d13_DIC = d13_DIC, d13_co2 = d13_co2, d13c = d13_c)[1:(i-1), ]
+  results = data.frame(time = seq(dt, time, dt), V = V, fraction = V/V[1], 
+                       res_C = res_C, DIC = DIC_s, CO2_s = CO2_s, pH = pH, 
+                       MgCa_s = MgCa_s, SrCa_s = SrCa_s, MgCa_c = MgCa_c, SrCa_c = SrCa_c,
+                       Jp = Jp, omega = omega,
+                       d18s = d18_s, d18c = d18_c, d13_DIC = d13_DIC, d13_co2 = d13_co2, d13c = d13_c)[1:(i-1), ]
 }
-
