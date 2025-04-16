@@ -17,28 +17,36 @@ theme = theme(axis.text.x = element_text(margin = margin(t = 0.1, unit = "cm")),
 
 # data grooming ---- 
 DB = read_xlsx("data/DanceBayou_all_carb_data.xlsx")
-DB1 = data.frame(DB$ID, DB$site, DB$depth, DB$d13C, DB$d18O, DB$`Sr, L1`, DB$`Mg, L1`)
-names(DB1) = c("ID", "site", "depth", "d13", "d18", "SrCa_mass", "MgCa_mass")
+DB1 = data.frame(DB$ID, DB$site, DB$depth, DB$d13C, DB$d18O, DB$`Sr, L1`, DB$`Mg, L1`, DB$`Mn, L1`)
+names(DB1) = c("ID", "site", "depth", "d13", "d18", "SrCa_mass", "MgCa_mass", "MnCa_mass")
 DB1 = DB1 %>%
   filter(site == "1") %>%
-  mutate(MgCa = 1000 * MgCa_mass * 40.078 / 24.305,
-         SrCa = 1000 * SrCa_mass * 40.078 / 87.62)
+  mutate(MgCa = 1e3 * MgCa_mass * 40.078 / 24.305,
+         SrCa = 1e3 * SrCa_mass * 40.078 / 87.62,
+         MnCa = 1e3 * MnCa_mass * 40.078 / 54.94)
 DB1$depth = as.numeric(DB1$depth)
 cat("\014")
 source('box_model_Mn_redox.R')
 
 # run the box model ----
 vars = ctrl()
+vars$lamda = 0
+# vars$F_in = 0
 # vars$res_Co = 1e-6
 # vars$d13_r = -14
 # vars$Tsoil = 20
 # vars$k_degas = 0
+# vars$time = 60 * 60 * 24
 # vars$F_evap = 5e-1
 
 dat = SWTS_bm(vars) %>%
   filter(Jp != 0)
 # dat = dat %>%
 #   filter(d18c <= max(DB1$d18))
+
+ggplot(dat) +
+  geom_path(aes(x = fraction, y = res_C))
+
 
 ggplot(dat) +
   geom_path(aes(x = d13c, y = d18c, color = fraction)) +
@@ -52,6 +60,13 @@ ggplot(dat) +
   labs(x = expression(delta^"13"*"C"[c]*" (\u2030, VPDB)"),
        y = expression(delta^"18"*"O"[c]*" (\u2030, VPDB)"),
        fill = "depth (cm)")
+
+ggplot(dat) +
+  geom_path(aes(x = SrCa_c * 1e3, y = MnCa_c * 1e3, color = fraction)) +
+  scale_color_distiller(palette = "RdBu", direction = 1) +
+  geom_point(data = DB1, aes(x = SrCa, y = MnCa, fill = depth), shape = 22, size = 3) +
+  scale_fill_viridis_c(direction = -1) +
+  theme_bw() + theme
 
 
 # respired CO2 input ----

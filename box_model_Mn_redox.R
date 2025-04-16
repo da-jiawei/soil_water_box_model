@@ -126,6 +126,7 @@ SWTS_bm = function(vars) {
   MnCa_s = rep(0, num)
   omega = rep(0, num)
   Jp = rep(0, num)
+  cal_rate = rep(0, num)
   SrCa_c = rep(0, num)
   MgCa_c = rep(0, num)
   MnCa_c = rep(0, num)
@@ -137,6 +138,7 @@ SWTS_bm = function(vars) {
   tryCatch(
     {
       for (i in 1:(num-1)) {
+        
         # calculating water isotope
         R18s = (d18_s[i]/1000 + 1) * R18smow
         R18e = (R18s - RH * R18v * alpha18_l_v) / ((1 - RH) * alpha18_l_v * alpha18_diff) # Craig-Gordon model
@@ -175,7 +177,7 @@ SWTS_bm = function(vars) {
         } else {
           Jp[i] = 0
         }
-        
+
         # calcite precipitation rate
         if(omega[i] <= 1.5) {
           cal_rate[i] = 0.28 * omega[i] # calcite precipitation rate - nmol/mg/min
@@ -184,8 +186,29 @@ SWTS_bm = function(vars) {
         }
         
         # distribution coefficients
-        kd_Sr[i] = 10 ^ (0.249 * log10(cal_rate[i]) - 1.57) 
-        kd_Mn[i] = 10 ^ (-0.266 * log10(cal_rate[i]) + 1.35)
+        # kd_Sr[i] = 10 ^ (0.249 * log10(cal_rate[i]) - 1.57)
+        kd_Sr[i] = 0.057
+        # kd_Mn[i] = 10 ^ (-0.266 * log10(cal_rate[i]) + 1.35)
+        kd_Mn[i] = 20
+        
+        SrCa_s[i] = Sr_s[i] / Ca_s[i]
+        MgCa_s[i] = Mg_s[i] / Ca_s[i]
+        MnCa_s[i] = Mn_s[i] / Ca_s[i]
+        
+        if(Jp[i] == 0) {
+          SrCa_c[i] = 0
+          MgCa_c[i] = 0
+          MnCa_c[i] = 0
+          d13_c[i] = 0
+          d18_c[i] = 0
+        } else {
+          SrCa_c[i] = kd_Sr[i] * SrCa_s[i]
+          MgCa_c[i] = kd_Mg * MgCa_s[i]
+          MnCa_c[i] = kd_Mn[i] * MnCa_s[i]
+          d13_c[i] = (d13_co2[i] + 1000) * alpha13_cal_CO2 - 1000
+          R18c = R18s * alpha18_c_w
+          d18_c[i] = (R18c / R18vpdb - 1) * 1000
+        }
         
         ### box model
         # C input from soil respiration as a function of remaining soil water
@@ -200,30 +223,12 @@ SWTS_bm = function(vars) {
         degas = k_degas * (CO2_s[i] - CO2_atm)
         dDIC = (dt / V[i]) * (F_in * (DIC_p - DIC_s[i]) + F_evap * DIC_s[i] + DIC_w - Jp[i] - degas + res_C[i])
         dCa = (dt / V[i]) * (F_in * (Ca_p - Ca_s[i]) + F_evap * Ca_s[i] + Ca_w - Jp[i])
-        dMg = (dt / V[i]) * (F_in * (Mg_p - Mg_s[i]) + F_evap * Mg_s[i] + Mg_w - (Jp[i] * kd_Mg * Mg_s[i] / Ca_s[i]))
-        dSr = (dt / V[i]) * (F_in * (Sr_p - Sr_s[i]) + F_evap * Sr_s[i] + Sr_w - (Jp[i] * kd_Sr[i] * Sr_s[i] / Ca_s[i]))
-        dMn = (dt / V[i]) * (F_in * (Mn_p - Mn_s[i]) + F_evap * Mn_s[i] + Mn_w - (Jp[i] * kd_Mn[i] * Mn_s[i] / Ca_s[i])) + Mn_rd[i]
+        dMg = (dt / V[i]) * (F_in * (Mg_p - Mg_s[i]) + F_evap * Mg_s[i] + Mg_w - (Jp[i] * MgCa_c[i]))
+        dSr = (dt / V[i]) * (F_in * (Sr_p - Sr_s[i]) + F_evap * Sr_s[i] + Sr_w - (Jp[i] * SrCa_c[i]))
+        dMn = (dt / V[i]) * (F_in * (Mn_p - Mn_s[i]) + F_evap * Mn_s[i] + Mn_w - (Jp[i] * MnCa_c[i])) + Mn_rd[i]
         dd18_s = (dt / V[i]) * ((d18p - d18_s[i]) * F_in - (d18e - d18_s[i]) * F_evap)
         # dd13_DIC = (dt / (V[i] * DIC_s[i])) * ((d13_DIC_p - d13_DIC[i]) * F_in - (d13_co2[i] * degas) + (d13_r * res_C[i]) - (d13_c[i] * Jp[i]) + (d13_DIC[i] * DIC_s[i] * F_evap) - (d13_DIC[i] * V[i] * dDIC / dt))
         dd13_DIC = (dt / (V[i] * DIC_s[i])) * ((d13_DIC_p - d13_DIC[i]) * F_in - (d13_co2[i] - d13_DIC[i]) * degas + (d13_r - d13_DIC[i]) * res_C[i] - (d13_c[i] - d13_DIC[i]) * Jp[i] + (d13_DIC_w - d13_DIC[i]) * DIC_w)
-        
-        if(Jp[i] == 0) {
-          SrCa_c[i] = NA
-          MgCa_c[i] = NA
-          MnCa_c[i] = NA
-          d13_c[i] = NA
-          d18_c[i] = NA
-        } else {
-          SrCa_s[i] = Sr_s[i] / Ca_s[i]
-          MgCa_s[i] = Mg_s[i] / Ca_s[i]
-          MnCa_s[i] = Mn_s[i] / Ca_s[i]
-          SrCa_c[i] = kd_Sr[i] * SrCa_s[i]
-          MgCa_c[i] = kd_Mg * MgCa_s[i]
-          MnCa_c[i] = kd_Mn[i] * MnCa_s[i]
-          d13_c[i] = (d13_co2[i] + 1000) * alpha13_cal_CO2 - 1000
-          R18c = R18s * alpha18_c_w
-          d18_c[i] = (R18c / R18vpdb - 1) * 1000
-        }
         
         V[i+1] = V[i] + dV
         if(V[i+1] <= 0) {
@@ -237,9 +242,9 @@ SWTS_bm = function(vars) {
         Sr_s[i+1] = Sr_s[i] + dSr
         Mg_s[i+1] = Mg_s[i] + dMg
         Mn_s[i+1] = Mn_s[i] + dMn
-        SrCa_s[i+1] = Sr_s[i+1] / Ca_s[i+1]
-        MgCa_s[i+1] = Mg_s[i+1] / Ca_s[i+1]
-        MnCa_s[i+1] = Mn_s[i+1] / Ca_s[i+1]
+        # SrCa_s[i+1] = Sr_s[i+1] / Ca_s[i+1]
+        # MgCa_s[i+1] = Mg_s[i+1] / Ca_s[i+1]
+        # MnCa_s[i+1] = Mn_s[i+1] / Ca_s[i+1]
         d18_s[i+1] = d18_s[i] + dd18_s
         d13_DIC[i+1] = d13_DIC[i] + dd13_DIC
       }
@@ -249,7 +254,7 @@ SWTS_bm = function(vars) {
     })
   results = data.frame(time = seq(dt, time, dt), V = V, fraction = V/V[1], 
                        res_C = res_C, Mn_rd = Mn_rd, DIC = DIC_s, CO2_s = CO2_s, pH = pH, 
-                       MgCa_s = MgCa_s, SrCa_s = SrCa_s, MnCa_s = MnCa_s,
+                       MgCa_s = MgCa_s, SrCa_s = SrCa_s, MnCa_s = MnCa_s, 
                        MgCa_c = MgCa_c, SrCa_c = SrCa_c, MnCa_c = MnCa_c,
                        Jp = Jp, omega = omega,
                        d18s = d18_s, d18c = d18_c, d13_DIC = d13_DIC, d13_co2 = d13_co2, d13c = d13_c)[1:(i-1), ]
