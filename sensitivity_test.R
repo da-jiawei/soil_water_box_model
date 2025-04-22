@@ -14,7 +14,7 @@ theme = theme(axis.text.x = element_text(margin = margin(t = 0.1, unit = "cm")),
               legend.title = element_text(size = 10),
               panel.grid.minor = element_blank(),
               panel.grid.major = element_blank())
-source('box_model.R')
+source('box_model_Mn_redox.R')
 cat("\014")
 
 # calcite precipitation rate (no significant effect) ----
@@ -35,11 +35,11 @@ ggplot(dat, aes(x = d13c, y = d18c, color = kp, group = kp)) +
   labs(x = expression(delta^"13"*"C"[c]*" (\u2030, VPDB)"),
        y = expression(delta^"18"*"O"[c]*" (\u2030, VPDB)"))
 
-ggplot(dat, aes(x = 1e3 * SrCa_c, y = MgCa_c, color = kp, group = kp)) +
+ggplot(dat, aes(x = 1e3 * SrCa_c, y = 1e3 * MgCa_c, color = kp, group = kp)) +
   geom_path() +
   theme_bw() + theme +
   labs(x = "Sr/Ca (mmol/mol)",
-       y = "Mg/Ca (mol/mol)")
+       y = "Mg/Ca (mmol/mol)")
 
 # CO2 dissolution rate ----
 vars = ctrl()

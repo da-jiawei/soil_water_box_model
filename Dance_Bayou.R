@@ -30,8 +30,8 @@ source('box_model_Mn_redox.R')
 
 # run the box model ----
 vars = ctrl()
-vars$lamda = 0
-# vars$F_in = 0
+# vars$lamda = 0
+# vars$F_in = 2e-4
 # vars$res_Co = 1e-6
 # vars$d13_r = -14
 # vars$Tsoil = 20
@@ -41,12 +41,9 @@ vars$lamda = 0
 
 dat = SWTS_bm(vars) %>%
   filter(Jp != 0)
-# dat = dat %>%
-#   filter(d18c <= max(DB1$d18))
 
-ggplot(dat) +
-  geom_path(aes(x = fraction, y = res_C))
-
+ggplot(dat, aes(x = fraction, y = res_C)) +
+  geom_path()
 
 ggplot(dat) +
   geom_path(aes(x = d13c, y = d18c, color = fraction)) +
@@ -66,22 +63,31 @@ ggplot(dat) +
   scale_color_distiller(palette = "RdBu", direction = 1) +
   geom_point(data = DB1, aes(x = SrCa, y = MnCa, fill = depth), shape = 22, size = 3) +
   scale_fill_viridis_c(direction = -1) +
+  # scale_y_continuous(limits = c(0, max(DB1$MnCa))) +
   theme_bw() + theme
 
+ggplot(dat) +
+  geom_path(aes(x = SrCa_c * 1e3, y = MgCa_c * 1e3, color = fraction)) +
+  scale_color_distiller(palette = "RdBu", direction = 1) +
+  geom_point(data = DB1, aes(x = SrCa, y = MgCa, fill = depth), shape = 22, size = 3) +
+  scale_fill_viridis_c(direction = -1) +
+  theme_bw() + theme
 
 # respired CO2 input ----
 vars = ctrl()
-sims = list()
 for (i in 1:5) {
-  vars$res_Co = i * 2e-5
-  dat = SWTS_bm(vars)
+  vars$res_Co = i * 2e-6
+  dat = SWTS_bm(vars) |>
+    filter(Jp != 0)
   dat$res_Co = vars$res_Co
-  sims[[i]] = dat
+  if (i == 1) {
+    sims = dat
+  } else {
+    sims = rbind(sims, dat)
+  }
 }
-selected_cols = lapply(sims, function(df) df[, c("res_Co", "fraction", "SrCa_c", "MgCa_c", "d13c", "d18c")])
-dat = do.call(rbind, selected_cols) %>% drop_na()
 
-p1 = ggplot(dat) +
+p1 = ggplot(sims) +
   geom_path(aes(x = d13c, y = d18c, color = log10(res_Co), group = res_Co)) +
   scale_color_distiller(palette = "RdBu", direction = 1) +
   geom_point(data = DB1, aes(x = d13, y = d18, fill = depth), shape = 22, size = 3) +
@@ -96,19 +102,28 @@ p1 = ggplot(dat) +
        color = expression("log"[10]*"(C"[res]*") (mol/s)"))
 p1 
 
+ggplot(sims) +
+  geom_path(aes(x = SrCa_c * 1e3, y = MnCa_c * 1e3, color = log10(res_Co), group = res_Co)) +
+  scale_color_distiller(palette = "RdBu", direction = 1) +
+  geom_point(data = DB1, aes(x = SrCa, y = MnCa, fill = depth), shape = 22, size = 3) +
+  scale_fill_viridis_c(direction = -1) +
+  theme_bw() + theme
+
 # d13C of respired CO2 ----
 vars = ctrl()
-sims = list()
 for (i in 1:5) {
   vars$d13_r = -24 + 2*i
-  dat = SWTS_bm(vars)
+  dat = SWTS_bm(vars) |>
+    filter(Jp != 0)
   dat$d13_r = vars$d13_r
-  sims[[i]] = dat
+  if (i == 1) {
+    sims = dat
+  } else {
+    sims = rbind(sims, dat)
+  }
 }
-selected_cols = lapply(sims, function(df) df[, c("d13_r", "fraction", "SrCa_c", "MgCa_c", "d13c", "d18c")])
-dat = do.call(rbind, selected_cols) %>% drop_na()
 
-p2 = ggplot(dat) +
+p2 = ggplot(sims) +
   geom_path(aes(x = d13c, y = d18c, color = d13_r, group = d13_r)) +
   scale_color_distiller(palette = "RdBu", direction = 1) +
   geom_point(data = DB1, aes(x = d13, y = d18, fill = depth), shape = 22, size = 3) +
@@ -125,17 +140,18 @@ p2
 
 # degassing rate ----
 vars = ctrl()
-sims = list()
 for (i in 1:5) {
   vars$k_degas = i * 2e-8
-  dat = SWTS_bm(vars)
+  dat = SWTS_bm(vars) |>
+    filter(Jp != 0)
   dat$k_degas = vars$k_degas
-  sims[[i]] = dat
-}
-selected_cols = lapply(sims, function(df) df[, c("k_degas", "fraction", "SrCa_c", "MgCa_c", "d13c", "d18c")])
-dat = do.call(rbind, selected_cols) %>% drop_na()
+  if (i == 1) {
+    sims = dat
+  } else {
+    sims = rbind(sims, dat)
+  }}
 
-ggplot(dat) +
+ggplot(sims) +
   geom_path(aes(x = d13c, y = d18c, color = log10(k_degas), group = k_degas)) +
   scale_color_distiller(palette = "RdBu", direction = 1) +
   geom_point(data = DB1, aes(x = d13, y = d18, fill = depth), shape = 22, size = 3) +
@@ -148,19 +164,29 @@ ggplot(dat) +
        fill = "depth (cm)",
        color = expression("log"[10]*"(k"[degassing]*") (mol/s)"))
 
+ggplot(sims) +
+  geom_path(aes(x = SrCa_c * 1e3, y = MnCa_c * 1e3, color = log10(k_degas), group = k_degas)) +
+  scale_color_distiller(palette = "RdBu", direction = 1) +
+  geom_point(data = DB1, aes(x = SrCa, y = MnCa, fill = depth), shape = 22, size = 3) +
+  scale_fill_viridis_c(direction = -1) +
+  theme_bw() + theme
+
 # calcite precipitation rate ----
 vars = ctrl()
-sims = list()
-for (i in 1:5) {
-  vars$kp = 10 ^ - (1 + i)
-  dat = SWTS_bm(vars)
+# vars$kd_Mn = 1
+for (i in 1:4) {
+  vars$kp = 10 ^ - (2 + i)
+  dat = SWTS_bm(vars) |>
+    filter(Jp != 0)
   dat$kp = vars$kp
-  sims[[i]] = dat
+  if (i == 1) {
+    sims = dat
+  } else {
+    sims = rbind(sims, dat)
+  }
 }
-selected_cols = lapply(sims, function(df) df[, c("kp", "fraction", "SrCa_c", "MgCa_c", "d13c", "d18c")])
-dat = do.call(rbind, selected_cols) %>% drop_na()
 
-ggplot(dat) +
+ggplot(sims) +
   geom_path(aes(x = d13c, y = d18c, color = log10(kp), group = kp)) +
   scale_color_distiller(palette = "RdBu", direction = 1) +
   geom_point(data = DB1, aes(x = d13, y = d18, fill = depth), shape = 22, size = 3) +
@@ -173,19 +199,28 @@ ggplot(dat) +
        fill = "depth (cm)",
        color = expression("log"[10]*"(k"[p]*") (mol/s)"))
 
+ggplot(sims) +
+  geom_path(aes(x = SrCa_c * 1e3, y = MnCa_c * 1e3, color = log10(kp), group = kp)) +
+  scale_color_distiller(palette = "RdBu", direction = 1) +
+  geom_point(data = DB1, aes(x = SrCa, y = MnCa, fill = depth), shape = 22, size = 3) +
+  scale_fill_viridis_c(direction = -1) +
+  theme_bw() + theme
+
 # evaporation rate ----
 vars = ctrl()
-sims = list()
 for (i in 1:4) {
-  vars$F_evap = i * 2e-3
-  dat = SWTS_bm(vars)
+  vars$F_evap = i * 2e-4
+  dat = SWTS_bm(vars) |>
+    filter(Jp != 0)
   dat$F_evap = vars$F_evap
-  sims[[i]] = dat
+  if (i == 1) {
+    sims = dat
+  } else {
+    sims = rbind(sims, dat)
+  }
 }
-selected_cols = lapply(sims, function(df) df[, c("F_evap", "fraction", "SrCa_c", "MgCa_c", "d13c", "d18c")])
-dat = do.call(rbind, selected_cols) %>% drop_na()
 
-p3 = ggplot(dat) +
+p3 = ggplot(sims) +
   geom_path(aes(x = d13c, y = d18c, color = log10(F_evap), group = F_evap)) +
   scale_color_distiller(palette = "RdBu", direction = 1) +
   geom_point(data = DB1, aes(x = d13, y = d18, fill = depth), shape = 22, size = 3) +
@@ -200,19 +235,28 @@ p3 = ggplot(dat) +
        color = expression("log"[10]*"(F"[evap]*") (mol/s)"))
 p3
 
+ggplot(sims) +
+  geom_path(aes(x = SrCa_c * 1e3, y = MnCa_c * 1e3, color = log10(F_evap), group = F_evap)) +
+  scale_color_distiller(palette = "RdBu", direction = 1) +
+  geom_point(data = DB1, aes(x = SrCa, y = MnCa, fill = depth), shape = 22, size = 3) +
+  scale_fill_viridis_c(direction = -1) +
+  theme_bw() + theme
+
 # rainfall influx ----
 vars = ctrl()
-sims = list()
 for (i in 1:4) {
-  vars$F_in = i * 2e-4
-  dat = SWTS_bm(vars)
+  vars$F_in = i * 2e-5
+  dat = SWTS_bm(vars) |>
+    filter(Jp != 0)
   dat$F_in = vars$F_in
-  sims[[i]] = dat
+  if (i == 1) {
+    sims = dat
+  } else {
+    sims = rbind(sims, dat)
+  }
 }
-selected_cols = lapply(sims, function(df) df[, c("F_in", "fraction", "SrCa_c", "MgCa_c", "d13c", "d18c")])
-dat = do.call(rbind, selected_cols) %>% drop_na()
 
-p4 = ggplot(dat) +
+p4 = ggplot(sims) +
   geom_path(aes(x = d13c, y = d18c, color = log10(F_in), group = F_in)) +
   scale_color_distiller(palette = "RdBu", direction = 1) +
   geom_point(data = DB1, aes(x = d13, y = d18, fill = depth), shape = 22, size = 3) +
@@ -227,19 +271,29 @@ p4 = ggplot(dat) +
        color = expression("log"[10]*"(F"["in"]*") (mol/L/s)"))
 p4 
 
+ggplot(sims) +
+  geom_path(aes(x = SrCa_c * 1e3, y = MnCa_c * 1e3, color = log10(F_in), group = F_in)) +
+  scale_color_distiller(palette = "RdBu", direction = 1) +
+  geom_point(data = DB1, aes(x = SrCa, y = MnCa, fill = depth), shape = 22, size = 3) +
+  scale_fill_viridis_c(direction = -1) +
+  theme_bw() + theme
+
+
 # d13C of influx-DIC ----
 vars = ctrl()
-sims = list()
 for (i in 1:4) {
   vars$d13_DIC_p = -5 + i
-  dat = SWTS_bm(vars)
+  dat = SWTS_bm(vars) |>
+    filter(Jp != 0)
   dat$d13_DIC_p = vars$d13_DIC_p
-  sims[[i]] = dat
+  if (i == 1) {
+    sims = dat
+  } else {
+    sims = rbind(sims, dat)
+  }
 }
-selected_cols = lapply(sims, function(df) df[, c("d13_DIC_p", "fraction", "SrCa_c", "MgCa_c", "d13c", "d18c")])
-dat = do.call(rbind, selected_cols) %>% drop_na()
 
-p5 = ggplot(dat) +
+p5 = ggplot(sims) +
   geom_path(aes(x = d13c, y = d18c, color = d13_DIC_p, group = d13_DIC_p)) +
   scale_color_distiller(palette = "RdBu", direction = 1) +
   geom_point(data = DB1, aes(x = d13, y = d18, fill = depth), shape = 22, size = 3) +
@@ -253,6 +307,30 @@ p5 = ggplot(dat) +
        fill = "depth (cm)",
        color = expression(delta^"13"*"C"[DIC]*" (\u2030)"))
 p5 
+
+
+# Mn reduction rate ----
+vars = ctrl()
+for (i in 1:4) {
+  vars$lamda = i * 1e-3
+  dat = SWTS_bm(vars) |>
+    filter(Jp != 0)
+  dat$lamda = vars$lamda
+  if (i == 1) {
+    sims = dat
+  } else {
+    sims = rbind(sims, dat)
+  }
+}
+
+ggplot(sims) +
+  geom_path(aes(x = SrCa_c * 1e3, y = MnCa_c * 1e3, color = log10(lamda), group = lamda)) +
+  scale_color_distiller(palette = "RdBu", direction = 1) +
+  geom_point(data = DB1, aes(x = SrCa, y = MnCa, fill = depth), shape = 22, size = 3) +
+  scale_fill_viridis_c(direction = -1) +
+  scale_y_continuous(limits = c(0, 1)) +
+  theme_bw() + theme
+
 
 # temp ----
 vars = ctrl()

@@ -15,18 +15,21 @@ find_d13HCO3 = function(X_HCO3, X_CO3, X_H2CO3, d13_DIC, d13_HCO3, alpha13_HCO3_
 # input parameters
 ctrl = function(){
   vars = list(
+    xmax = 0.8, # fraction of remaining soil water with maximum respiration,
+    steep = 20, # parameters determining the relative amount of heterotrophic CO2 respiration
+    xmid = 1, # parameters determining the relative amount of heterotrophic CO2 respiration
     lamda = 1e-3, # Mn reduction rate constant
     kp = 3e-3, # rate constant for carbonate precipitation - mol/s
     k_degas = 2e-7, # CO2 degassing constant - mol/s
     d13_r = -20, # the d13C of the respired CO2 in equilibrium with DIC
-    res_Co = 5e-5, # the initial amount of respired CO2 being added into the DIC - mol/s
+    res_Co = 5e-6, # the initial amount of respired CO2 being added into the DIC - mol/s
     d18p = -4, # rainfall d18O
     RH = 0.7, # relative humidity
-    Tsoil = 17, # soil temperature
+    Tsoil = 20, # soil temperature
     w = 0.9, # the relative contribution of diffusion to evaporation
     # flux and concentration
-    F_in = 2e-4, # rainfall - L/s
-    F_evap = 1e-3, # evaporation - L/s
+    F_in = 3e-5, # rainfall - L/s (based on MAP)
+    F_evap = 5e-4, # evaporation - L/s
     F_out_o = 0, # outflow of soil waters (e.g., to deeper soils, rootwater uptake)
     # rainfall chemistry
     Ca_p = 1e-4, # unit - mol/L
@@ -44,15 +47,17 @@ ctrl = function(){
     d13_DIC_w = -25,
     # parameterization
     dt = 1,  # unit - s
-    time = 60 * 60,
     Vo = 10, # initial soil water volume - L
     Vt = 15, # maximum volume
     d18so = -4, # initial soil water d18O
     Ca_so = 1e-3,
     Mg_so = 1e-4,
-    Sr_so = 2e-6,
-    Mn_so = 2e-6,
-    DIC_so = 2.5e-3
+    Sr_so = 6e-7,
+    Mn_so = 5e-8,
+    DIC_so = 2.5e-3,
+    kd_Mg = 0.031, # distribution coefficient for Mg
+    kd_Sr = 0.057,
+    kd_Mn = 5
   )
 }
 
@@ -60,6 +65,7 @@ ctrl = function(){
 SWTS_bm = function(vars) {
   ## Unpack variables
   list2env(vars, environment())
+  time = 1e4 * dt
   ## constants ----
   # the first and second disassociation constants for carbonic acid
   k1 = 10^-6.3
@@ -67,7 +73,6 @@ SWTS_bm = function(vars) {
   kh = 10^-1.5
   
   ksp = 3.3e-9 # solubility product of calcite
-  kd_Mg = 0.031 # distribution coefficient for Mg
   
   # isotope standards
   R18smow = 0.0020052
@@ -101,7 +106,8 @@ SWTS_bm = function(vars) {
   num = time / dt
   V = rep(Vo, num) # unit - L
   F_out = rep(F_out_o, num)
-  res_C = rep(res_Co, num)
+  res_C = rep(0, num)
+  res_C_ht = rep(0, num)
   d18_s = rep(d18so, num)
   d18_c = rep(0, num)
   d13_DIC = rep(0, num)
@@ -130,8 +136,8 @@ SWTS_bm = function(vars) {
   SrCa_c = rep(0, num)
   MgCa_c = rep(0, num)
   MnCa_c = rep(0, num)
-  kd_Sr = rep(0, num)
-  kd_Mn = rep(0, num)
+  # kd_Sr = rep(0, num)
+  # kd_Mn = rep(0, num)
   Mn_rd = rep(0, num)
   
   ## loop ----
@@ -174,23 +180,15 @@ SWTS_bm = function(vars) {
         omega[i] = Ca_s[i] * CO3_s[i] / ksp 
         if(omega[i] > 1) {
           Jp[i] = kp * (omega[i] - 1) # precipitation flux of calcite - unit: mol/s
+          cal_rate[i] = ifelse(omega[i] <= 2.1, 0.28 * omega[i], (7.5 * omega[i] - 15)) # nmol/mg seed crystal/min (Lorens, 1981)
+          # Jp[i] = cal_rate[i] * 1e-9 / 60
+          # distribution coefficients - Lorens 1981
+          # kd_Sr[i] = exp(0.249 * log(cal_rate[i]) - 1.57)
+          # kd_Mn[i] = exp(-0.266 * log(cal_rate[i]) + 1.35)
         } else {
           Jp[i] = 0
         }
-
-        # calcite precipitation rate
-        if(omega[i] <= 1.5) {
-          cal_rate[i] = 0.28 * omega[i] # calcite precipitation rate - nmol/mg/min
-        } else {
-          cal_rate[i] = 7.5 * omega[i] - 15 # omega < 5.5
-        }
-        
-        # distribution coefficients
-        # kd_Sr[i] = 10 ^ (0.249 * log10(cal_rate[i]) - 1.57)
-        kd_Sr[i] = 0.057
-        # kd_Mn[i] = 10 ^ (-0.266 * log10(cal_rate[i]) + 1.35)
-        kd_Mn[i] = 20
-        
+    
         SrCa_s[i] = Sr_s[i] / Ca_s[i]
         MgCa_s[i] = Mg_s[i] / Ca_s[i]
         MnCa_s[i] = Mn_s[i] / Ca_s[i]
@@ -202,9 +200,9 @@ SWTS_bm = function(vars) {
           d13_c[i] = 0
           d18_c[i] = 0
         } else {
-          SrCa_c[i] = kd_Sr[i] * SrCa_s[i]
+          SrCa_c[i] = kd_Sr * SrCa_s[i]
           MgCa_c[i] = kd_Mg * MgCa_s[i]
-          MnCa_c[i] = kd_Mn[i] * MnCa_s[i]
+          MnCa_c[i] = kd_Mn * MnCa_s[i]
           d13_c[i] = (d13_co2[i] + 1000) * alpha13_cal_CO2 - 1000
           R18c = R18s * alpha18_c_w
           d18_c[i] = (R18c / R18vpdb - 1) * 1000
@@ -213,11 +211,13 @@ SWTS_bm = function(vars) {
         ### box model
         # C input from soil respiration as a function of remaining soil water
         x = V[i] / Vt
-        res_C[i] = res_Co * 1.869186 * x * (1 - x) ^ .25
+        cf1 = 1 / xmax - 1 
+        cf2 = 1 / (xmax * (1 - xmax) ^ cf1)
+        res_C[i] = res_Co * cf2 * x * (1 - x) ^ cf1
         # relative amount of heterotrophic CO2 
-        res_C_ht = res_C[i] * (1 / (1 + exp(-20 * (x - 0.8))))
+        res_C_ht[i] = res_C[i] * (1 / (1 + exp(-steep * (x - xmid))))
         # relative amount of Mn reduction
-        Mn_rd[i] = 2 * lamda * res_C_ht
+        Mn_rd[i] = 2 * lamda * res_C_ht[i]
         
         dV = dt * (F_in - F_evap - F_out[i]) # unit: L/s
         degas = k_degas * (CO2_s[i] - CO2_atm)
@@ -253,10 +253,13 @@ SWTS_bm = function(vars) {
       message("Returning results up to the last successful iteration.")
     })
   results = data.frame(time = seq(dt, time, dt), V = V, fraction = V/V[1], 
-                       res_C = res_C, Mn_rd = Mn_rd, DIC = DIC_s, CO2_s = CO2_s, pH = pH, 
+                       Jp = Jp, omega = omega, cal_rate = cal_rate,
+                       res_C = res_C, Mn_rd = Mn_rd, 
+                       DIC = DIC_s, CO2_s = CO2_s, pH = pH, 
                        MgCa_s = MgCa_s, SrCa_s = SrCa_s, MnCa_s = MnCa_s, 
                        MgCa_c = MgCa_c, SrCa_c = SrCa_c, MnCa_c = MnCa_c,
-                       Jp = Jp, omega = omega,
+                       # kd_Sr = kd_Sr, kd_Mn = kd_Mn,
+                       # Mn_s = Mn_s, Ca_s = Ca_s,
                        d18s = d18_s, d18c = d18_c, d13_DIC = d13_DIC, d13_co2 = d13_co2, d13c = d13_c)[1:(i-1), ]
 }
 
