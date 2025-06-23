@@ -67,7 +67,7 @@ SWTS_bm = function(vars) {
   list2env(vars, environment())
   time = 1e4 * dt
   ## constants ----
-  # the first and second disassociation constants for carbonic acid
+  # the first and second disassociation constants for carbolic acid
   k1 = 10^-6.3
   k2 = 10^-10.3
   kh = 10^-1.5
