@@ -1,19 +1,12 @@
 rm(list = ls())
-library(tidyverse)
-library(ggpubr)
-library(readxl)
-library(scales)
-theme = theme(axis.text.x = element_text(margin = margin(t = 0.1, unit = "cm")),
-              axis.text.y = element_text(margin = margin(r = 0.1, unit = "cm")),
-              axis.ticks.length=unit(0.15, "cm"),
-              axis.ticks = element_line(colour = "black"),
+pacman::p_load(tidyverse, readxl, ggpubr, scales)
+theme = theme(axis.ticks = element_line(color = "black"),
               text = element_text(color = "black", size = 10),
               axis.title = element_text(size = 12), 
               axis.text = element_text(color = "black", size = 10),
               legend.text = element_text(size = 10),
               legend.title = element_text(size = 10),
-              panel.grid.minor = element_blank(),
-              panel.grid.major = element_blank())
+              panel.grid = element_blank())
 
 # data grooming ---- 
 DB = read_xlsx("data/DanceBayou_all_carb_data.xlsx")
