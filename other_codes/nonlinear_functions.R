@@ -1,20 +1,24 @@
 # bell-shaped distribution
-x = seq(0, 1, 0.01)
-x.max = 0.8 # volumetric soil water content with maximum respiration
-n = 1 / x.max - 1
-a = 1 / (x.max * (1 - x.max) ^ n)
-y = a * x * (1 - x) ^ n
-plot(x, y, type = "l",
-     xlab = expression(italic(f)[sw]),
-     ylab = expression("[CO"[2]*"]"[res]))
+theta = seq(0, 1, 0.01)
+C_atm = 4e2
+peak = 0.8
+a = 5
+CO2_max = 2e4
+
+b =  (a/peak) - a
+peak = a / (a + b)
+c = CO2_max / (peak^a * (1 - peak)^b)
+CO2 = c * theta^a * (1 - theta)^b + C_atm
+plot(theta, CO2, type = "l",
+     xlab = expression(theta),
+     ylab = expression("[CO"[2]*"]"[res]*" (ppmv)"))
 
 
 # logistic function for sigmoidal curve
-x = seq(0, 1, 0.01)
 L = 1 # maximum value
 k = 50 # steepness of the curve
-xo = 0.9 # midpoint
+xo = .9 # midpoint
 y = L / (1 + exp(-k * (x - xo)))
-plot(x, y, type = "l",
-     xlab = expression(italic(f)[sw]),
-     ylab = expression("[CO"[2]*"]"[hetero]*" / [CO"[2]*"]"[total]))
+plot(theta, y, type = "l",
+     xlab = expression(theta),
+     ylab = expression(italic(f)[ana]))

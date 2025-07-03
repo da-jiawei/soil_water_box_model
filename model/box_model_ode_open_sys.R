@@ -1,10 +1,10 @@
 pacman::p_load(deSolve)
 # functions ----
 # find proton
-calcite_eq = function(H, ALK, DIC, k1, k2) {
-  term1 = (2 * k1 * k2) / (H^2) + (k1 / H)
-  term2 = 1 + (k1 * k2) / (H^2) + (k1 / H)
-  return(ALK * term2 - DIC * term1)
+find_proton = function(H, ALK, H2CO3, k1, k2) {
+  HCO3 = k1 * H2CO3 / H
+  CO3 = k2 * HCO3 / H
+  return(ALK - HCO3 - 2*CO3)
 }
 # find d13C_HCO3
 find_d13HCO3 = function(X_HCO3, X_CO3, X_H2CO3, d13_DIC, d13_HCO3, alpha13_HCO3_H2CO3, alpha13_HCO3_CO2) {
@@ -18,19 +18,20 @@ find_d13HCO3 = function(X_HCO3, X_CO3, X_H2CO3, d13_DIC, d13_HCO3, alpha13_HCO3_
 parms = c(
   # parameters associated with Mn reduction
   peak = 0.8, # volumetric water content with maximum respiration
-  r_rd = 5, # respiration reduction rate
-  steep = 50, # parameters determining the relative amount of heterotrophic CO2 respiration
-  xmid = .9, # parameters determining the relative amount of heterotrophic CO2 respiration
+  res_reduction_rate = 5,
+  steep = 50, # parameters determining the relative amount of anaerobic CO2 respiration
+  xmid = 0.9, # parameters determining the relative amount of anaerobic CO2 respiration
   
   # rate constant 
   kp = 3e-3, # rate constant for carbonate precipitation - mol/s
-  k_degas = 2e-7, # CO2 degassing constant - mol/s
+  # k_degas = 2e-7, # CO2 degassing constant - mol/s
   lamda = 1e-3, # Mn reduction rate constant
   
   # environmental parameters
-  CO2_atm = 400, # atmospheric CO2 - ppmv
+  CO2_soil_max = 2e4, # maximum soil CO2 - ppmv
+  CO2_atm = 4e2, # atmospheric CO2 - ppmv
   d13_r = -20, # the d13C of the respired CO2 in equilibrium with DIC
-  CO2_r_max = 5e-5, # the maximum amount of respired CO2 being added into the DIC - mol/s
+  # res_Co = 5e-6, # the initial amount of respired CO2 being added into the DIC - mol/s
   d18p = -4, # rainfall d18O
   RH = 0.7, # relative humidity
   Tsoil = 20, # soil temperature
@@ -65,7 +66,7 @@ parms = c(
   DIC_w = 0,
   d13_DIC_w = -25,
   
-  Vt = 10, # maximum soil water volume
+  Vt = 10, # soil pore volume - L
   
   # distribution coefficients
   kd_Mg = 0.031,
@@ -157,45 +158,40 @@ soil_water_chemistry = function(t, state, parms){
     
     # Mn reduction
     # C input from soil respiration as a function of remaining soil water
-    theta = V / Vt
-    b = (r_rd/peak) - r_rd
-    c =  CO2_r_max / (peak^r_rd * (1 - peak)^b)
-    # total respired CO2 being added into the DIC - mol/s
-    CO2_r = c * theta^r_rd * (1 - theta)^b 
-    # relative amount of anaerobic CO2 
+    # PV = nRT
+    theta = V / Vt # volumetric water content
+    b = (res_reduction_rate/peak) - res_reduction_rate
+    c =  CO2_soil_max / (peak^res_reduction_rate * (1 - peak)^b)
+    CO2_r = c * theta^res_reduction_rate * (1 - theta)^b # total respired CO2 - ppmv
+    CO2_s = CO2_r + CO2_atm # total soil CO2
+    # relative amount of anerobic CO2 - ppmv
     CO2_ana = CO2_r * (1 / (1 + exp(-steep * (theta - xmid))))
     # relative amount of Mn reduction
-    # 4H + CH2O + 2MnO2 = 2Mn + CO2 + 3H2O
-    Mn_rd = lamda * 2 * CO2_ana
+    Mn_rd = 2 * lamda * CO2_ana
     
-    degas = k_degas * (CO2_sw - CO2_atm)
+    # degas = k_degas * (CO2_sw - CO2_atm)
     
     # ODE
     dV = F_in - F_evap - F_out # unit: L/s
-    dDIC = 1/V * (F_in * (DIC_p - DIC_sw) + F_evap * DIC_sw + DIC_w - Jp - degas + CO2_r)
+    dDIC = 1/V * (F_in * (DIC_p - DIC_sw) + F_evap * DIC_sw + DIC_w - Jp - degas + res_C)
     dCa = 1/V * (F_in * (Ca_p - Ca_sw) + F_evap * Ca_sw + Ca_w - Jp)
     dMg = 1/V * (F_in * (Mg_p - Mg_sw) + F_evap * Mg_sw + Mg_w - (Jp * MgCa_c))
     dSr = 1/V * (F_in * (Sr_p - Sr_sw) + F_evap * Sr_sw + Sr_w - (Jp * SrCa_c))
     dMn = 1/V * (F_in * (Mn_p - Mn_sw) + F_evap * Mn_sw + Mn_w - (Jp * MnCa_c)) + Mn_rd
     dd18_sw = 1/V * ((d18p - d18_sw) * F_in - (d18e - d18_sw) * F_evap)
-    dd13_DIC = (1 / (V * DIC_sw)) * ((d13_DIC_p - d13_DIC) * F_in - (d13_co2 - d13_DIC) * degas + (d13_r - d13_DIC) * CO2_r - (d13_c - d13_DIC) * Jp + (d13_DIC_w - d13_DIC) * DIC_w)
+    dd13_DIC = (1 / (V * DIC_sw)) * ((d13_DIC_p - d13_DIC) * F_in - (d13_co2 - d13_DIC) * degas + (d13_r - d13_DIC) * res_C - (d13_c - d13_DIC) * Jp + (d13_DIC_w - d13_DIC) * DIC_w)
     
     list(c(dV, dd18_sw, dd13_DIC, dCa, dMg, dSr, dMn, dDIC),
-         CO2_r = CO2_r, Mn_rd = Mn_rd, 
          SrCa_c = SrCa_c, MgCa_c = MgCa_c, MnCa_c = MnCa_c,
          d13_c = d13_c, d18_c = d18_c)
   })
 }
 
-parms["Vt"] = 11
-time = seq(0, 1e4, 1)
+time = seq(0, 1e3, 1)
 results = ode(y = state,
               times = time,
               parms = parms,
               func = soil_water_chemistry)
 results = as.data.frame(results)
-plot(results$time, results$CO2_r, type = "l")
-plot(results$time, results$d13_c, type = "l")
-plot(results$time, results$d18_c, type = "l")
-plot(results$time, results$Mn_rd, type = "l")
-plot(results$time, results$MnCa_c, type = "l")
+plot(results$time, results$d13_c)
+plot(results$time, results$d18_c)
