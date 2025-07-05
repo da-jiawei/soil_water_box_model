@@ -1,8 +1,8 @@
 # bell-shaped distribution
-theta = seq(0, 1, 0.01)
+theta = seq(0, 0.9, 0.01)
 C_atm = 4e2
-peak = 0.8
-a = 5
+peak = 0.7
+a = 2
 CO2_max = 2e4
 
 b =  (a/peak) - a
@@ -15,10 +15,10 @@ plot(theta, CO2, type = "l",
 
 
 # logistic function for sigmoidal curve
-L = 1 # maximum value
-k = 50 # steepness of the curve
-xo = .9 # midpoint
-y = L / (1 + exp(-k * (x - xo)))
-plot(theta, y, type = "l",
+lamda = 1e-11 # maximum value
+steep = 5 # steepness of the curve
+x_mid = .8 # midpoint
+Mn_rd = CO2 * lamda / (1 + exp(-steep * (theta - x_mid)))
+plot(theta, Mn_rd, type = "l",
      xlab = expression(theta),
      ylab = expression(italic(f)[ana]))
