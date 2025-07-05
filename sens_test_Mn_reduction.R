@@ -74,17 +74,18 @@ ggplot(calcite) +
 # Medium version ----
 # no CO2 degassing, variable Mn reduction rate
 source('model/box_model_ode.R')
-time = seq(0, 1e4, 10)
-# parms["F_in"] = 0 # 3e-5
-# parms["k_degas"] = 0 # 2e-7
-# parms["k_diss"] = 0
+time = seq(0, 1.8e4, 10)
+parms["F_in"] = 0 # 3e-5
+parms["k_degas"] = 0 # 2e-7
+parms["k_diss"] = 0
 state["DIC_sw"] = 2.5e-3
-state["Mn_sw"] = 0
+state["Mn_sw"] = 1e-8
+state["Sr_sw"] = 1.5e-6
 parms["peak"] = 0.7
 parms["r_rd"] = 2
 parms["xmid"] = 0.8
 parms["steep"] = 5
-# parms["lamda"] = 3e-3
+parms["lamda"] = 3e-3
 results = ode(y = state,
               times = time,
               parms = parms,
@@ -92,6 +93,7 @@ results = ode(y = state,
 results = as.data.frame(results) |> filter(time > 100)
 calcite = results |> filter(Jp > 0)
 par(mfrow = c(3,2), mar = margin(3, 3, 1, 1))
+# plot(results$time, results$CO2_diss, type = "l", xlab = "time (s)", ylab = "CO2", mgp = c(2, .8, 0))
 plot(results$time, results$pH, type = "l", xlab = "time (s)", ylab = "pH", mgp = c(2, .8, 0))
 plot(results$time, results$Alk, type = "l", xlab = "time (s)", ylab = "Alk (mol/L)", mgp = c(2, .8, 0))
 plot(results$time, results$DIC_sw, type = "l", xlab = "time (s)", ylab = "DIC (mol/L)", mgp = c(2, .8, 0))
@@ -113,24 +115,32 @@ ggplot(calcite) +
        color = "time (h)")
 
 ggplot(calcite) +
-  geom_path(aes(x = d13_c, y = d18_c, color = time)) +
+  geom_path(aes(x = d13_c, y = d18_c, color = time/3600)) +
   scale_color_distiller(palette = "RdBu") +
   geom_point(data = DB1, aes(x = d13, y = d18, fill = depth), shape = 22, size = 3) +
   scale_fill_viridis_c(direction = -1) +
   theme_bw() + theme +
+  theme(legend.title = element_text(size = 12, margin = margin(b = 15))) +
   labs(x = expression(delta^"13"*"C"[c]*" (\u2030, VPDB)"),
        y = expression(delta^"18"*"O"[c]*" (\u2030, VPDB)"),
        fill = "depth (cm)",
-       color = "time (s)") 
+       color = "time (h)") 
 
-# No degassing version ----
+# Full version ----
 source('model/box_model_ode.R')
-time = seq(0, 1e4, 1)
-# parms["F_in"] = 0 # 3e-5
-parms["k_degas"] = 0 # 2e-7
+time = seq(0, 1.2e4, 1)
+parms["k_degas"] = 3e-9
 # parms["k_diss"] = 1e-2
-parms["kp"] = .1
-state["DIC_sw"] = 2.6e-3
+# state["DIC_sw"] = 2.5e-3
+state["Mn_sw"] = 0 # 5e-8
+# state["Sr_sw"] = 1.5e-6
+# parms["peak"] = 0.7
+# parms["r_rd"] = 2
+# parms["xmid"] = 0.8
+# parms["steep"] = 5
+parms["lamda"] = 1e-3
+parms["kd_Mn"] = 10
+
 results = ode(y = state,
               times = time,
               parms = parms,
@@ -150,7 +160,7 @@ plot(calcite$time, calcite$Jp, type = "l", xlab = "time (s)", ylab = "calcite (m
 plot(calcite$time, 1e3*calcite$SrCa_c, type = "l", xlab = "time (s)", ylab = expression("Sr/Ca"[c]*" (mmol/mol)"), mgp = c(2, .8, 0))
 
 p1 = ggplot(calcite) +
-  geom_point(aes(x = SrCa_c * 1e3, y = MnCa_c * 1e3, color = time/3600), size = 1) +
+  geom_path(aes(x = SrCa_c * 1e3, y = MnCa_c * 1e3, color = time/3600)) +
   scale_color_distiller(palette = "RdBu") +
   geom_point(data = DB1, aes(x = SrCa, y = MnCa, fill = depth), shape = 22, size = 3) +
   scale_fill_viridis_c(direction = -1) +
@@ -162,7 +172,7 @@ p1 = ggplot(calcite) +
        color = "time (h)")
 
 p2 = ggplot(calcite) +
-  geom_point(aes(x = d13_c, y = d18_c, color = time/3600), size = 1) +
+  geom_path(aes(x = d13_c, y = d18_c, color = time/3600)) +
   scale_color_distiller(palette = "RdBu") +
   geom_point(data = DB1, aes(x = d13, y = d18, fill = depth), shape = 22, size = 3) +
   scale_fill_viridis_c(direction = -1) +
